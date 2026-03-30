@@ -244,21 +244,74 @@ const App = () => {
                    </div>
                    </>
                 ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                         {filteredData.map(item => (
-                            <div key={item.id} className="glass-card" style={{ padding: '20px 24px', border: '1px solid var(--card-border)', background: 'var(--card-bg)' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px', borderBottom: '1px solid var(--card-border)', paddingBottom: '8px' }}>
-                                    <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
-                                        <span style={{ fontWeight: 900, color: 'var(--text-primary)' }}>#{item.id}</span>
-                                        <span className="tag" style={{ fontSize: '0.65rem' }}>{item.rawFields?.['Status']}</span>
-                                        <span style={{ opacity: 0.7, fontSize: '0.8rem', color: 'var(--text-primary)' }}><b>{item.rawFields?.['Object group']}</b></span>
+                            <div key={item.id} className="glass-card" style={{ padding: '24px', border: '1px solid var(--card-border)', background: 'var(--card-bg)', display: 'grid', gridTemplateColumns: '250px 1fr', gap: '40px', alignItems: 'start' }}>
+                                {/* Left Section: Metadata */}
+                                <div style={{ borderRight: '1px solid var(--card-border)', paddingRight: '20px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                                        <span style={{ fontSize: '1.1rem', fontWeight: 900, color: 'var(--accent-color)' }}>#{item.id}</span>
+                                        <span className="tag" style={{ fontSize: '0.6rem', padding: '2px 8px' }}>{item.rawFields?.['Status']}</span>
                                     </div>
-                                    <span style={{ fontSize: '0.65rem', opacity: 0.4, color: 'var(--text-primary)' }}>{item.fileList}</span>
+                                    <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '4px' }}>{item.rawFields?.['Object group']}</div>
+                                    <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginBottom: '15px' }}>{item.fileList}</div>
+                                    <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+                                        <span style={{ fontSize: '0.55rem', padding: '4px 8px', background: 'var(--bg-primary)', borderRadius: '6px', color: 'var(--text-secondary)' }}>{new Date(item.date).toLocaleDateString('de-DE')}</span>
+                                    </div>
                                 </div>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '25px' }}>
-                                    <div><p style={{ fontSize: '0.55rem', opacity: 0.4, fontWeight: 800, color: 'var(--text-primary)' }}>NABAVNA</p><h4 style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--text-primary)' }}>{item.purchasePrice.toLocaleString('de-DE')} €</h4><div style={{ marginTop: '8px', background: 'var(--card-sub-bg)', padding: '8px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>{item.topSuppliers.map(([n, d], i) => (<div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: 'var(--text-primary)' }}><span>{n}</span><span style={{ fontWeight: 700 }}>{d.purchase.toFixed(1)}€</span></div>))}</div></div>
-                                    <div><p style={{ fontSize: '0.55rem', opacity: 0.4, fontWeight: 800, color: 'var(--text-primary)' }}>PRODAJNA</p><h4 style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--text-primary)' }}>{item.sellingPrice.toLocaleString('de-DE')} €</h4><div style={{ marginTop: '8px', background: 'var(--card-sub-bg)', padding: '8px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>{item.topSuppliers.map(([n, d], i) => (<div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: 'var(--text-primary)' }}><span>{n}</span><span style={{ fontWeight: 700 }}>{d.selling.toFixed(1)}€</span></div>))}</div></div>
-                                    <div><p style={{ fontSize: '0.55rem', opacity: 0.4, fontWeight: 800, color: 'var(--text-primary)' }}>RUC</p><div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}><h4 style={{ fontSize: '1rem', fontWeight: 900, color: '#16a34a' }}>{item.ruc.toLocaleString('de-DE')} €</h4><span style={{ fontSize: '0.7rem', fontWeight: 800, color: item.rucPercent < 5 ? '#dc2626' : '#16a34a' }}>{item.rucPercent.toFixed(1)}%</span></div><div style={{ marginTop: '8px', background: 'rgba(22, 163, 74, 0.05)', padding: '8px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>{item.topSuppliers.map(([n, d], i) => { const m = (d.ruc / (d.selling || 1)) * 100; return (<div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: 'var(--text-primary)' }}><span>{n}</span><span style={{ fontWeight: 800, color: m < 5 ? '#dc2626' : '#16a34a' }}>{d.ruc.toFixed(1)}€ ({m.toFixed(0)}%)</span></div>); })}</div></div>
+
+                                {/* Right Section: Financials Grid */}
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '30px' }}>
+                                    {/* Nabavna Column */}
+                                    <div>
+                                        <p style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '2px', letterSpacing: '0.05em' }}>NABAVNA</p>
+                                        <div style={{ fontSize: '1.25rem', fontWeight: 900, color: 'var(--text-primary)', marginBottom: '12px' }}>{item.purchasePrice.toLocaleString('de-DE')} <span style={{ fontSize: '0.8rem' }}>€</span></div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', background: 'var(--card-sub-bg)', padding: '12px', borderRadius: '12px', border: '1px solid var(--card-border)' }}>
+                                            {item.topSuppliers.map(([n, d], i) => (
+                                                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', gap: '10px' }}>
+                                                    <span style={{ color: 'var(--text-primary)', opacity: 0.8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{n}</span>
+                                                    <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{d.purchase.toFixed(1)}€</span>
+                                                </div>
+                                            ))}
+                                            {item.topSuppliers.length === 0 && <span style={{ fontSize: '0.65rem', opacity: 0.3 }}>Nema podataka</span>}
+                                        </div>
+                                    </div>
+
+                                    {/* Prodajna Column */}
+                                    <div>
+                                        <p style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '2px', letterSpacing: '0.05em' }}>PRODAJNA</p>
+                                        <div style={{ fontSize: '1.25rem', fontWeight: 900, color: 'var(--text-primary)', marginBottom: '12px' }}>{item.sellingPrice.toLocaleString('de-DE')} <span style={{ fontSize: '0.8rem' }}>€</span></div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', background: 'var(--card-sub-bg)', padding: '12px', borderRadius: '12px', border: '1px solid var(--card-border)' }}>
+                                            {item.topSuppliers.map(([n, d], i) => (
+                                                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', gap: '10px' }}>
+                                                    <span style={{ color: 'var(--text-primary)', opacity: 0.8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{n}</span>
+                                                    <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{d.selling.toFixed(1)}€</span>
+                                                </div>
+                                            ))}
+                                            {item.topSuppliers.length === 0 && <span style={{ fontSize: '0.65rem', opacity: 0.3 }}>Nema podataka</span>}
+                                        </div>
+                                    </div>
+
+                                    {/* RUC Column */}
+                                    <div>
+                                        <p style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '2px', letterSpacing: '0.05em' }}>RUC & MARŽA</p>
+                                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', marginBottom: '12px' }}>
+                                            <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#16a34a' }}>{item.ruc.toLocaleString('de-DE')} <span style={{ fontSize: '0.8rem' }}>€</span></div>
+                                            <div style={{ fontSize: '0.85rem', fontWeight: 800, color: item.rucPercent < 5 ? '#dc2626' : '#16a34a' }}>{item.rucPercent.toFixed(1)}%</div>
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', background: 'rgba(22, 163, 74, 0.05)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(22, 163, 74, 0.1)' }}>
+                                            {item.topSuppliers.map(([n, d], i) => {
+                                                const m = (d.ruc / (d.selling || 1)) * 100;
+                                                return (
+                                                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', gap: '10px' }}>
+                                                        <span style={{ color: 'var(--text-primary)', opacity: 0.8, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{n}</span>
+                                                        <span style={{ fontWeight: 800, color: m < 5 ? '#dc2626' : '#16a34a' }}>{d.ruc.toFixed(1)}€ ({m.toFixed(0)}%)</span>
+                                                    </div>
+                                                );
+                                            })}
+                                            {item.topSuppliers.length === 0 && <span style={{ fontSize: '0.65rem', opacity: 0.3 }}>Nema podataka</span>}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         ))}
