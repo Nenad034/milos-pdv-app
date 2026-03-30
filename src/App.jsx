@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import * as XLSX from 'xlsx';
-import { Search, Download, Upload, TrendingUp, Users, CheckCircle2, FileSpreadsheet } from 'lucide-react';
+import { Search, Download, Upload, TrendingUp, CheckCircle2, FileSpreadsheet, Filter } from 'lucide-react';
 import { processReservationData, exportToExcel } from './utils/excelProcessor';
 import { supabase } from './supabase';
 
@@ -34,7 +34,6 @@ const App = () => {
           sellingPrice: d.selling_price,
           ruc: d.ruc_amount,
           rucPercent: d.ruc_percent,
-          suppliersText: d.raw_fields?.['Supplier name'] || '',
           fileList: d.file_name,
           date: d.created_at,
           rawFields: d.raw_fields || {},
@@ -109,98 +108,125 @@ const App = () => {
     return { p: t.p, s: t.s, r: t.r, count: filteredData.length, rucPerc: t.s > 0 ? (t.r / t.s) * 100 : 0 };
   }, [filteredData]);
 
+  const toggleColumn = (col) => setVisibleCols(prev => prev.includes(col) ? prev.filter(c => c !== col) : [...prev, col]);
   const removeTag = (t) => setSearchTags(searchTags.filter(tag => tag !== t));
   const toggleFile = (fn) => setActiveFiles(prev => prev.includes(fn) ? prev.filter(f => f !== fn) : [...prev, fn]);
 
   return (
     <div className="full-screen-container pearl-theme">
-      {/* Header: Fixed Style, Dark Background, White Text */}
       <header style={{ background: '#0f172a', color: 'white', padding: '15px 30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
           <div className="logo-box" style={{ background: 'white', padding: '8px', borderRadius: '8px' }}><TrendingUp color="#0f172a" size={20} /></div>
           <div>
-            <h1 style={{ color: 'white', fontSize: '1.2rem', fontWeight: 800, margin: 0 }}>Prime Analytics Pro</h1>
-            <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.65rem', margin: 0 }}>V2.1 - Reporting Engine</p>
+            <h1 style={{ color: 'white', fontSize: '1.25rem', fontWeight: 900, margin: 0 }}>Prime Analytics Pro</h1>
+            <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.65rem', margin: 0 }}>V2.1 - Reporting Intelligence</p>
           </div>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
-            <div style={{ display: 'flex', background: 'rgba(255,255,255,0.1)', padding: '3px', borderRadius: '10px' }}>
-                <button onClick={() => setCurrentView('analytics')} style={{ padding: '8px 20px', borderRadius: '8px', border: 'none', background: currentView === 'analytics' ? 'white' : 'transparent', color: currentView === 'analytics' ? '#0f172a' : 'white', fontWeight: 700, cursor: 'pointer' }}>Analitika</button>
-                <button onClick={() => setCurrentView('archive')} style={{ padding: '8px 20px', borderRadius: '8px', border: 'none', background: currentView === 'archive' ? 'white' : 'transparent', color: currentView === 'archive' ? '#0f172a' : 'white', fontWeight: 700, cursor: 'pointer' }}>Arhiva</button>
-            </div>
-            <button className="btn" onClick={() => {
-                const nt = theme === 'dark' ? 'light' : 'dark';
-                setTheme(nt); localStorage.setItem('milos_theme', nt);
-            }} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white', width: '45px' }}>{theme === 'dark' ? '☀️' : '🌙'}</button>
-            <button className="btn" style={{ background: '#4f46e5', color: 'white', padding: '8px 20px' }} onClick={() => exportToExcel(filteredData, visibleCols)}><Download size={16} /> Eksport</button>
+          <div style={{ display: 'flex', background: 'rgba(255,255,255,0.1)', padding: '3px', borderRadius: '10px' }}>
+             <button onClick={() => setCurrentView('analytics')} style={{ padding: '8px 22px', borderRadius: '8px', border: 'none', background: currentView === 'analytics' ? 'white' : 'transparent', color: currentView === 'analytics' ? '#0f172a' : 'white', fontWeight: 700, cursor: 'pointer' }}>Analitika</button>
+             <button onClick={() => setCurrentView('archive')} style={{ padding: '8px 22px', borderRadius: '8px', border: 'none', background: currentView === 'archive' ? 'white' : 'transparent', color: currentView === 'archive' ? '#0f172a' : 'white', fontWeight: 700, cursor: 'pointer' }}>Arhiva</button>
+          </div>
+          <button className="btn" onClick={() => { const nt = theme === 'dark' ? 'light' : 'dark'; setTheme(nt); localStorage.setItem('milos_theme', nt); }} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white', width: '45px' }}>{theme === 'dark' ? '☀️' : '🌙'}</button>
+          <button className="btn" style={{ background: '#4f46e5', color: 'white', padding: '8px 22px', display: 'flex', alignItems: 'center', gap: '8px' }} onClick={() => exportToExcel(filteredData, visibleCols)}><Download size={16} /> Eksport</button>
         </div>
       </header>
 
       <main className="main-content" style={{ padding: '30px' }}>
         {currentView === 'analytics' ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
-            {/* Minimal Stat Bar */}
-            <div style={{ display: 'flex', gap: '20px' }}>
-                {[ {l: 'Rezervacije', v: stats.count}, {l: 'Nabavna', v: stats.p.toLocaleString('de-DE') + ' €'}, {l: 'Prodajna', v: stats.s.toLocaleString('de-DE') + ' €'}, {l: 'RUC', v: stats.r.toLocaleString('de-DE') + ' €'}, {l: 'Marža', v: stats.rucPerc.toFixed(1) + '%'}].map(s => (
-                    <div key={s.l} className="glass-card" style={{ flex: 1, padding: '20px', background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
-                        <h2 style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--text-primary)', margin: 0 }}>{s.v}</h2>
-                        <p style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>{s.l}</p>
-                    </div>
-                ))}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+            {/* Stats Bar */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '20px' }}>
+               {[ { l: 'Rezervacije', v: stats.count }, { l: 'Nabavna', v: stats.p.toLocaleString('de-DE') + ' €' }, { l: 'Prodajna', v: stats.s.toLocaleString('de-DE') + ' €' }, { l: 'RUC', v: stats.r.toLocaleString('de-DE') + ' €' }, { l: 'Marža', v: stats.rucPerc.toFixed(1) + '%' }].map(s => (
+                 <div key={s.l} className="glass-card" style={{ padding: '20px', background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
+                    <h2 style={{ fontSize: '1.6rem', fontWeight: 900, color: 'var(--text-primary)', margin: 0 }}>{s.v}</h2>
+                    <p style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', marginTop: '4px' }}>{s.l}</p>
+                 </div>
+               ))}
             </div>
 
+            {/* Upload Area & Active Files */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '30px' }}>
+                <div className="glass-card" style={{ padding: '30px', background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
+                    <h3 style={{ marginBottom: '15px', color: 'var(--text-primary)', fontWeight: 800 }}>Uvoz podataka</h3>
+                    <label className="upload-dropzone" style={{ border: '2px dashed var(--card-border)', borderRadius: '15px', padding: '50px', textAlign: 'center', cursor: 'pointer', display: 'block', background: 'var(--bg-primary)' }}>
+                        <Upload size={32} color="var(--text-secondary)" style={{ marginBottom: '15px' }} />
+                        <p style={{ color: 'var(--text-primary)', fontSize: '1rem', fontWeight: 700 }}>{isProcessing ? 'Procesiranje...' : 'Kliknite ili prevucite Excel fajl ovde'}</p>
+                        <input type="file" onChange={handleFileUpload} style={{ display: 'none' }} />
+                    </label>
+                </div>
+                <div className="glass-card" style={{ padding: '30px', background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
+                    <h3 style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 900, textTransform: 'uppercase', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}><Filter size={14} /> Aktivni Fajlovi</h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {importedFiles.map(fn => (
+                            <div key={fn} onClick={() => toggleFile(fn)} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', borderRadius: '12px', border: '1px solid', borderColor: activeFiles.includes(fn) ? '#4f46e5' : 'var(--card-border)', background: activeFiles.includes(fn) ? 'rgba(79,70,229,0.06)' : 'transparent', cursor: 'pointer', fontSize: '0.8rem', color: 'var(--text-primary)', fontWeight: 600 }}>
+                                <CheckCircle2 size={14} color={activeFiles.includes(fn) ? '#4f46e5' : '#cbd5e1'} /> {fn}
+                            </div>
+                        ))}
+                        {importedFiles.length === 0 && <p style={{ fontSize: '0.8rem', opacity: 0.5 }}>Nema uvezenih fajlova</p>}
+                    </div>
+                </div>
+            </div>
+
+            {/* Analysis Grid */}
             <div className="glass-card" style={{ padding: '30px', background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                        <h3 style={{ margin: 0, fontWeight: 900, color: 'var(--text-primary)' }}>Analitički Pregled</h3>
+                        <h2 style={{ margin: 0, fontWeight: 900, color: 'var(--text-primary)', fontSize: '1.4rem' }}>Analitički Pregled</h2>
                         <div style={{ display: 'flex', background: 'var(--bg-primary)', padding: '4px', borderRadius: '10px' }}>
-                            <button onClick={() => setViewMode('table')} style={{ padding: '6px 15px', borderRadius: '8px', border: 'none', background: viewMode === 'table' ? 'var(--card-bg)' : 'transparent', color: 'var(--text-primary)', fontWeight: 700, fontSize: '0.75rem', cursor: 'pointer' }}>Tabela (V1)</button>
-                            <button onClick={() => setViewMode('card')} style={{ padding: '6px 15px', borderRadius: '8px', border: 'none', background: viewMode === 'card' ? 'var(--card-bg)' : 'transparent', color: 'var(--text-primary)', fontWeight: 700, fontSize: '0.75rem', cursor: 'pointer' }}>Kartice (V2)</button>
+                            <button onClick={() => setViewMode('table')} style={{ padding: '8px 18px', borderRadius: '8px', border: 'none', background: viewMode === 'table' ? 'var(--card-bg)' : 'transparent', color: 'var(--text-primary)', fontWeight: 800, fontSize: '0.75rem', cursor: 'pointer' }}>Tabela (V1)</button>
+                            <button onClick={() => setViewMode('card')} style={{ padding: '8px 18px', borderRadius: '8px', border: 'none', background: viewMode === 'card' ? 'var(--card-bg)' : 'transparent', color: 'var(--text-primary)', fontWeight: 800, fontSize: '0.75rem', cursor: 'pointer' }}>Kartice (V2)</button>
                         </div>
                     </div>
-                    <div className="search-box" style={{ width: '350px', background: 'var(--bg-primary)', border: '1px solid var(--card-border)', padding: '10px 15px', borderRadius: '12px', display: 'flex', alignItems: 'center' }}>
-                        <Search size={16} color="var(--text-secondary)" />
-                        <input type="text" placeholder="Traži..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && searchTerm && (setSearchTags([...searchTags, searchTerm]), setSearchTerm(''))} style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', marginLeft: '10px', width: '100%', outline: 'none' }} />
+                    <div className="search-box" style={{ width: '400px', background: 'var(--bg-primary)', border: '1px solid var(--card-border)', padding: '12px 18px', borderRadius: '14px', display: 'flex', alignItems: 'center' }}>
+                        <Search size={18} color="var(--text-secondary)" />
+                        <input type="text" placeholder="Pretraži..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && searchTerm && (setSearchTags([...searchTags, searchTerm]), setSearchTerm(''))} style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', marginLeft: '12px', width: '100%', outline: 'none', fontSize: '0.9rem' }} />
                     </div>
                 </div>
 
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px' }}>
-                    {searchTags.map(t => <span key={t} className="tag" style={{ background: 'var(--text-primary)', color: 'var(--bg-secondary)', padding: '6px 12px' }}>{t} <span onClick={() => removeTag(t)} style={{ cursor: 'pointer', marginLeft: '6px' }}>×</span></span>)}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '25px' }}>
+                   {searchTags.map(t => <span key={t} className="tag" style={{ background: 'var(--text-primary)', color: 'var(--bg-secondary)', padding: '8px 14px', fontWeight: 700 }}>{t} <span onClick={() => removeTag(t)} style={{ cursor: 'pointer', marginLeft: '8px' }}>×</span></span>)}
                 </div>
 
                 {viewMode === 'table' ? (
+                  <>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginBottom: '25px', paddingBottom: '25px', borderBottom: '1px solid var(--card-border)' }}>
+                        <p style={{ width: '100%', fontSize: '0.7rem', fontWeight: 900, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '10px' }}>Upravljaj kolonama:</p>
+                        {availableColumns.map(col => (
+                            <button key={col} onClick={() => toggleColumn(col)} style={{ padding: '8px 16px', borderRadius: '10px', border: '1px solid var(--card-border)', background: visibleCols.includes(col) ? 'var(--text-primary)' : 'var(--card-bg)', color: visibleCols.includes(col) ? 'var(--bg-secondary)' : 'var(--text-primary)', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 700 }}>{col}</button>
+                        ))}
+                        <button onClick={() => setShowSuppliers(!showSuppliers)} style={{ padding: '8px 16px', borderRadius: '10px', background: showSuppliers ? '#4f46e5' : 'transparent', color: showSuppliers ? 'white' : '#4f46e5', border: '1px solid #4f46e5', fontWeight: 800, fontSize: '0.75rem', cursor: 'pointer' }}>+ Dobavljački raličnik</button>
+                    </div>
                     <div className="table-wrapper">
                         <table className="analysis-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                             <thead>
                                 <tr style={{ background: 'var(--bg-primary)', borderBottom: '2px solid var(--card-border)' }}>
-                                    <th style={{ textAlign: 'left', padding: '12px' }}>ID</th>
-                                    <th style={{ textAlign: 'left', padding: '12px' }}>Status</th>
-                                    <th style={{ textAlign: 'left', padding: '12px' }}>Objekat</th>
-                                    <th style={{ textAlign: 'right', padding: '12px' }}>Nabavna</th>
-                                    <th style={{ textAlign: 'right', padding: '12px' }}>Prodajna</th>
-                                    <th style={{ textAlign: 'right', padding: '12px' }}>RUC</th>
-                                    <th style={{ textAlign: 'center', padding: '12px' }}>%</th>
-                                    {showSuppliers && [1, 2, 3, 4, 5].map(i => <th key={i} style={{ padding: '12px', borderLeft: '1px solid var(--card-border)' }}>Dobavljač {i}</th>)}
+                                    <th style={{ textAlign: 'left', padding: '16px' }}>ID</th>
+                                    {availableColumns.filter(c => visibleCols.includes(c) && c !== 'Reservation').map(c => <th key={c} style={{ textAlign: 'left', padding: '16px' }}>{c}</th>)}
+                                    <th style={{ textAlign: 'right', padding: '16px' }}>Nabavna</th>
+                                    <th style={{ textAlign: 'right', padding: '16px' }}>Prodajna</th>
+                                    <th style={{ textAlign: 'right', padding: '16px' }}>RUC</th>
+                                    <th style={{ textAlign: 'center', padding: '16px' }}>%</th>
+                                    {showSuppliers && [1,2,3,4,5].map(i => <th key={i} style={{ textAlign: 'left', padding: '16px', borderLeft: '1px solid var(--card-border)' }}>D{i}</th>)}
                                 </tr>
                             </thead>
                             <tbody>
                                 {filteredData.map(item => (
                                     <tr key={item.id} style={{ borderBottom: '1px solid var(--card-border)' }}>
-                                        <td style={{ padding: '12px', fontWeight: 800 }}>#{item.id}</td>
-                                        <td style={{ padding: '12px' }}><span className="tag">{item.rawFields['Status']}</span></td>
-                                        <td style={{ padding: '12px' }}>{item.rawFields['Object group']}</td>
-                                        <td style={{ textAlign: 'right', padding: '12px' }}>{item.purchasePrice.toLocaleString('de-DE')} €</td>
-                                        <td style={{ textAlign: 'right', padding: '12px' }}>{item.sellingPrice.toLocaleString('de-DE')} €</td>
-                                        <td style={{ textAlign: 'right', padding: '12px', fontWeight: 700 }}>{item.ruc.toLocaleString('de-DE')} €</td>
-                                        <td style={{ textAlign: 'center', padding: '12px', color: item.rucPercent < 5 ? '#dc2626' : 'inherit' }}>{item.rucPercent.toFixed(1)}%</td>
+                                        <td style={{ padding: '16px', fontWeight: 800 }}>#{item.id}</td>
+                                        {availableColumns.filter(c => visibleCols.includes(c) && c !== 'Reservation').map(c => <td key={c} style={{ padding: '16px' }}>{item.rawFields[c] || '-'}</td>)}
+                                        <td style={{ textAlign: 'right', padding: '16px' }}>{item.purchasePrice.toLocaleString('de-DE')} €</td>
+                                        <td style={{ textAlign: 'right', padding: '16px' }}>{item.sellingPrice.toLocaleString('de-DE')} €</td>
+                                        <td style={{ textAlign: 'right', padding: '16px', fontWeight: 800 }}>{item.ruc.toLocaleString('de-DE')} €</td>
+                                        <td style={{ textAlign: 'center', padding: '16px', color: item.rucPercent < 5 ? '#dc2626' : 'inherit', fontWeight: 800 }}>{item.rucPercent.toFixed(1)}%</td>
                                         {showSuppliers && [0,1,2,3,4].map(idx => (
-                                            <td key={idx} style={{ padding: '10px', fontSize: '0.7rem', borderLeft: '1px solid var(--card-border)', verticalAlign: 'top' }}>
+                                            <td key={idx} style={{ padding: '12px', borderLeft: '1px solid var(--card-border)', fontSize: '0.75rem', verticalAlign: 'top' }}>
                                                 {item.topSuppliers[idx] ? (
                                                     <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                                        <div style={{ fontWeight: 800, color: 'var(--text-primary)', marginBottom: '2px' }}>{item.topSuppliers[idx][0]}</div>
+                                                        <div style={{ fontWeight: 900, marginBottom: '4px', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '110px' }}>{item.topSuppliers[idx][0]}</div>
                                                         <div style={{ display: 'flex', justifyContent: 'space-between', opacity: 0.6 }}><span>N:</span><span>{item.topSuppliers[idx][1].purchase.toFixed(1)}€</span></div>
                                                         <div style={{ display: 'flex', justifyContent: 'space-between', opacity: 0.6 }}><span>P:</span><span>{item.topSuppliers[idx][1].selling.toFixed(1)}€</span></div>
-                                                        <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--card-border)', marginTop: '2px', fontWeight: 700 }}><span>R:</span><span>{item.topSuppliers[idx][1].ruc.toFixed(1)}€</span></div>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--card-border)', marginTop: '2px', paddingTop: '2px', fontWeight: 800 }}><span>R:</span><span>{item.topSuppliers[idx][1].ruc.toFixed(1)}€</span></div>
                                                     </div>
                                                 ) : '-'}
                                             </td>
@@ -210,31 +236,32 @@ const App = () => {
                             </tbody>
                         </table>
                     </div>
+                  </>
                 ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                         {filteredData.map(item => (
-                            <div key={item.id} className="glass-card" style={{ padding: '24px', background: 'var(--card-bg)', border: '1px solid var(--card-border)', display: 'grid', gridTemplateColumns: '200px 1fr' }}>
+                            <div key={item.id} className="glass-card" style={{ padding: '25px', background: 'var(--card-bg)', border: '1px solid var(--card-border)', display: 'grid', gridTemplateColumns: '220px 1fr' }}>
                                 <div style={{ borderRight: '1px solid var(--card-border)', paddingRight: '20px' }}>
-                                    <h4 style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--accent-color)' }}>#{item.id}</h4>
-                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginTop: '5px' }}>
-                                        <span className="tag">{item.rawFields['Status']}</span>
-                                        <span style={{ fontSize: '0.75rem', fontWeight: 700, width: '100%' }}>{item.rawFields['Object group']}</span>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                                        <h4 style={{ fontSize: '1.25rem', fontWeight: 900, margin: 0, color: 'var(--accent-color)' }}>#{item.id}</h4>
+                                        <span className="tag" style={{ fontSize: '0.65rem' }}>{item.rawFields?.['Status']}</span>
                                     </div>
-                                    <p style={{ fontSize: '0.6rem', color: 'var(--text-secondary)', marginTop: '15px' }}>{item.fileList}</p>
+                                    <p style={{ fontWeight: 900, fontSize: '0.9rem', marginBottom: '8px' }}>{item.rawFields?.['Object group']}</p>
+                                    <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>{item.fileList}</p>
                                 </div>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '25px', paddingLeft: '25px' }}>
-                                    {[ {l:'NABAVNA', v: item.purchasePrice, f:'purchase'}, {l:'PRODAJNA', v: item.sellingPrice, f:'selling'}, {l:'RUC', v: item.ruc, f:'ruc', p: item.rucPercent}].map(col => (
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '35px', paddingLeft: '35px' }}>
+                                    {[ {l: 'NABAVNA', v: item.purchasePrice, s: item.topSuppliers, f: 'purchase'}, {l: 'PRODAJNA', v: item.sellingPrice, s: item.topSuppliers, f: 'selling'}, {l: 'RUC', v: item.ruc, s: item.topSuppliers, f: 'ruc', p: item.rucPercent}].map(col => (
                                         <div key={col.l}>
-                                            <p style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--text-secondary)', marginBottom: '5px' }}>{col.l}</p>
-                                            <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '10px' }}>
-                                                <h5 style={{ fontSize: '1.1rem', fontWeight: 900, margin: 0 }}>{col.v.toLocaleString('de-DE')} €</h5>
-                                                {col.p !== undefined && <span style={{ fontSize: '0.8rem', fontWeight: 800, color: col.p < 5 ? '#dc2626' : '#16a34a' }}>{col.p.toFixed(1)}%</span>}
+                                            <p style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--text-secondary)', marginBottom: '8px', letterSpacing: '0.05em' }}>{col.l}</p>
+                                            <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', marginBottom: '12px' }}>
+                                                <h5 style={{ fontSize: '1.2rem', fontWeight: 900, margin: 0 }}>{col.v.toLocaleString('de-DE')} €</h5>
+                                                {col.p !== undefined && <span style={{ fontSize: '0.9rem', fontWeight: 900, color: col.p < 5 ? '#dc2626' : '#16a34a' }}>{col.p.toFixed(1)}%</span>}
                                             </div>
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', padding: '10px', background: 'var(--bg-primary)', borderRadius: '10px' }}>
-                                                {item.topSuppliers.map(([n, d], i) => (
-                                                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem' }}>
-                                                        <span style={{ opacity: 0.7, maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n}</span>
-                                                        <span style={{ fontWeight: 700 }}>{d[col.f].toFixed(1)}€</span>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '12px', background: 'var(--bg-primary)', borderRadius: '12px' }}>
+                                                {col.s.map(([n, d], i) => (
+                                                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}>
+                                                        <span style={{ opacity: 0.8, maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }}>{n}</span>
+                                                        <span style={{ fontWeight: 800 }}>{d[col.f].toFixed(1)}€</span>
                                                     </div>
                                                 ))}
                                             </div>
@@ -246,40 +273,27 @@ const App = () => {
                     </div>
                 )}
             </div>
-            
-            {/* Archive Link Placeholder or Button */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                <div onClick={() => {}} className="glass-card pearl-card" style={{ padding: '30px', cursor: 'pointer', textAlign: 'center', background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
-                    <Upload size={24} style={{ marginBottom: '10px', color: 'var(--accent-color)' }} />
-                    <label style={{ cursor: 'pointer' }}>
-                        <h4 style={{ margin: 0 }}>Uvezi nove podatke</h4>
-                        <input type="file" onChange={handleFileUpload} style={{ display: 'none' }} />
-                    </label>
-                </div>
-                <div onClick={() => setCurrentView('archive')} className="glass-card pearl-card" style={{ padding: '30px', cursor: 'pointer', textAlign: 'center', background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
-                    <FileSpreadsheet size={24} style={{ marginBottom: '10px', color: 'var(--accent-color)' }} />
-                    <h4 style={{ margin: 0 }}>Pogledaj Arhivu</h4>
-                </div>
-            </div>
           </div>
         ) : (
           <div className="glass-card" style={{ padding: '30px', background: 'var(--card-bg)', border: '1px solid var(--card-border)' }}>
-             <h3 style={{ marginBottom: '20px', color: 'var(--text-primary)' }}>Arhiva Izveštaja</h3>
+             <h2 style={{ marginBottom: '25px', fontWeight: 900, color: 'var(--text-primary)' }}>Arhiva Izveštaja</h2>
              <table className="analysis-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead style={{ background: 'var(--bg-primary)' }}>
-                    <tr><th style={{ padding:'12px', textAlign:'left' }}>Fajl</th><th style={{ padding:'12px', textAlign:'left' }}>Datum</th><th style={{ padding:'12px', textAlign:'right' }}>Br. Rez.</th><th style={{ padding:'12px', textAlign:'right' }}>RUC</th><th style={{ padding:'12px', textAlign:'center' }}>Akcija</th></tr>
+                    <tr><th style={{ padding: '15px', textAlign: 'left' }}>Fajl</th><th style={{ padding: '15px', textAlign: 'left' }}>Datum Arhive</th><th style={{ padding: '15px', textAlign: 'right' }}>Stavke</th><th style={{ padding: '15px', textAlign: 'right' }}>Nabavna</th><th style={{ padding: '15px', textAlign: 'right' }}>Prodajna</th><th style={{ padding: '15px', textAlign: 'right' }}>RUC</th><th style={{ padding: '15px', textAlign: 'center' }}>Akcija</th></tr>
                 </thead>
                 <tbody>
                     {importedFiles.map(fn => {
                         const rd = data.filter(d => d.fileList === fn);
-                        const s = rd.reduce((a, b) => ({ r: a.r + b.ruc }), { r: 0 });
+                        const s = rd.reduce((a, b) => ({ p: a.p + b.purchasePrice, s: a.s + b.sellingPrice, r: a.r + b.ruc }), { p: 0, s: 0, r: 0 });
                         return (
                             <tr key={fn} style={{ borderBottom: '1px solid var(--card-border)' }}>
-                                <td style={{ padding:'15px' }}>{fn}</td>
-                                <td style={{ padding:'15px' }}>{new Date(rd[0]?.date).toLocaleDateString('de-DE')}</td>
-                                <td style={{ padding:'15px', textAlign:'right' }}>{rd.length}</td>
-                                <td style={{ padding:'15px', textAlign:'right', fontWeight:800 }}>{s.r.toLocaleString('de-DE')} €</td>
-                                <td style={{ padding:'15px', textAlign:'center' }}><button onClick={() => { setActiveFiles([fn]); setCurrentView('analytics'); }} className="btn">Prikaži</button></td>
+                                <td style={{ padding: '15px', fontWeight: 600 }}>{fn}</td>
+                                <td style={{ padding: '15px' }}>{new Date(rd[rd.length-1]?.date).toLocaleDateString('de-DE')}</td>
+                                <td style={{ padding: '15px', textAlign: 'right' }}>{rd.length}</td>
+                                <td style={{ padding: '15px', textAlign: 'right' }}>{s.p.toLocaleString('de-DE')} €</td>
+                                <td style={{ padding: '15px', textAlign: 'right' }}>{s.s.toLocaleString('de-DE')} €</td>
+                                <td style={{ padding: '15px', textAlign: 'right', fontWeight: 900, color: '#4f46e5' }}>{s.r.toLocaleString('de-DE')} €</td>
+                                <td style={{ padding: '15px', textAlign: 'center' }}><button onClick={() => { setActiveFiles([fn]); setCurrentView('analytics'); }} className="btn" style={{ padding: '8px 18px' }}>Prikaži</button></td>
                             </tr>
                         );
                     })}
